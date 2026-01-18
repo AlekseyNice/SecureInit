@@ -64,11 +64,11 @@ print_header "SecureInit v${VERSION}"
 echo -e "${CYAN}Автоматическая настройка безопасности Linux-сервера${NC}"
 echo ""
 echo -e "${BLUE}Новые возможности v2.0:${NC}"
-echo "  ${GREEN}✓${NC} Настройка UFW Firewall"
-echo "  ${GREEN}✓${NC} Генерация и установка SSH-ключей"
-echo "  ${GREEN}✓${NC} Автоматическое закрытие опасных портов"
-echo "  ${GREEN}✓${NC} Автоматические обновления безопасности"
-echo "  ${GREEN}✓${NC} Усиленная защита SSH"
+echo -e "  ${GREEN}✓${NC} Настройка UFW Firewall"
+echo -e "  ${GREEN}✓${NC} Генерация и установка SSH-ключей"
+echo -e "  ${GREEN}✓${NC} Автоматическое закрытие опасных портов"
+echo -e "  ${GREEN}✓${NC} Автоматические обновления безопасности"
+echo -e "  ${GREEN}✓${NC} Усиленная защита SSH"
 echo ""
 echo -e "${BLUE}Базовые функции:${NC}"
 echo "  • Обновление системы"
@@ -179,20 +179,41 @@ fi
 #==============================================================================
 print_header "НАСТРОЙКА SSH"
 
-read -p "Изменить SSH порт? (по умолчанию 22) [y/n]: " -n 1 -r </dev/tty
+echo "Выберите SSH порт:"
+echo "  1) Оставить стандартный порт 22"
+echo "  2) Изменить на другой порт (повышенная безопасность)"
 echo ""
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    while true; do
-        read -p "Введите новый SSH порт (1024-65535): " SSH_PORT </dev/tty
-        if [[ "$SSH_PORT" =~ ^[0-9]+$ ]] && [ "$SSH_PORT" -ge 1024 ] && [ "$SSH_PORT" -le 65535 ]; then
+
+while true; do
+    read -p "Ваш выбор [1-2]: " SSH_CHOICE </dev/tty
+    case $SSH_CHOICE in
+        1)
+            SSH_PORT=22
+            print_info "Используется стандартный порт 22"
             break
-        else
-            print_error "Неверный порт. Введите число от 1024 до 65535"
-        fi
-    done
-else
-    SSH_PORT=22
-fi
+            ;;
+        2)
+            while true; do
+                read -p "Введите новый SSH порт (1024-65535, или 0 для отмены): " SSH_PORT </dev/tty
+                if [[ "$SSH_PORT" == "0" ]]; then
+                    SSH_PORT=22
+                    print_info "Отменено. Используется порт 22"
+                    break
+                fi
+                if [[ "$SSH_PORT" =~ ^[0-9]+$ ]] && [ "$SSH_PORT" -ge 1024 ] && [ "$SSH_PORT" -le 65535 ]; then
+                    print_success "Будет использован порт $SSH_PORT"
+                    break
+                else
+                    print_error "Неверный порт. Введите число от 1024 до 65535 (или 0 для отмены)"
+                fi
+            done
+            break
+            ;;
+        *)
+            print_error "Неверный выбор. Введите 1 или 2"
+            ;;
+    esac
+done
 
 #==============================================================================
 # Настройка Firewall (UFW)
@@ -201,9 +222,9 @@ print_header "НАСТРОЙКА FIREWALL (UFW)"
 
 echo "Firewall будет настроен с базовыми правилами:"
 echo "  • SSH (порт $SSH_PORT) - РАЗРЕШЕН"
-echo "  • HTTP (порт 80) - на выбор"
-echo "  • HTTPS (порт 443) - на выбор"
 echo "  • Все остальные входящие - ЗАПРЕЩЕНЫ"
+echo ""
+echo "Дополнительные порты (необязательно):"
 echo ""
 
 read -p "Открыть порт 80 (HTTP)? [y/n]: " -n 1 -r </dev/tty
@@ -214,28 +235,35 @@ read -p "Открыть порт 443 (HTTPS)? [y/n]: " -n 1 -r </dev/tty
 echo ""
 [[ $REPLY =~ ^[Yy]$ ]] && OPEN_HTTPS=true || OPEN_HTTPS=false
 
-read -p "Хотите открыть дополнительные порты? [y/n]: " -n 1 -r </dev/tty
 echo ""
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    read -p "Введите порты через пробел (например: 3000 8080): " CUSTOM_PORTS </dev/tty
-fi
+echo "Если нужно открыть другие порты (например для Docker, баз данных),"
+echo "введите их через пробел или нажмите Enter для пропуска"
+read -p "Дополнительные порты: " CUSTOM_PORTS </dev/tty
 
 #==============================================================================
 # Параметры Fail2ban
 #==============================================================================
 print_header "НАСТРОЙКА FAIL2BAN"
 
-read -p "Введите IP адреса для игнорирования (через пробел, Enter для пропуска): " IGNORE_IPS </dev/tty
-if [[ -z "$IGNORE_IPS" ]]; then
+echo "Fail2ban защищает от брутфорс-атак, блокируя IP после неудачных попыток входа."
+echo ""
+echo "Если у вас есть статический IP адрес, можете добавить его в белый список,"
+echo "чтобы случайно не заблокировать себя. Введите IP или нажмите Enter для пропуска."
+echo ""
+
+read -p "Ваш IP адрес (или пропустить): " USER_IP </dev/tty
+if [[ -z "$USER_IP" ]]; then
     IGNORE_IPS="127.0.0.1/8"
 else
-    IGNORE_IPS="127.0.0.1/8 $IGNORE_IPS"
+    IGNORE_IPS="127.0.0.1/8 $USER_IP"
+    print_success "IP $USER_IP добавлен в белый список"
 fi
 
-read -p "Максимальное количество попыток входа (по умолчанию 3): " MAXRETRY </dev/tty
+echo ""
+read -p "Максимальное количество попыток входа [по умолчанию 3]: " MAXRETRY </dev/tty
 MAXRETRY=${MAXRETRY:-3}
 
-read -p "Время бана в часах (по умолчанию 24): " BANTIME_HOURS </dev/tty
+read -p "Время бана в часах [по умолчанию 24]: " BANTIME_HOURS </dev/tty
 BANTIME_HOURS=${BANTIME_HOURS:-24}
 
 #==============================================================================
