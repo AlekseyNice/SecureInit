@@ -31,14 +31,14 @@ SecureInit — это интерактивный bash-скрипт для быс
 ### Запуск одной командой
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/YOUR_USERNAME/SecureInit/main/setup.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/AlekseyNice/SecureInit/main/setup.sh | sudo bash
 ```
 
 ### Или скачайте и запустите локально
 
 ```bash
 # Скачать скрипт
-wget https://raw.githubusercontent.com/YOUR_USERNAME/SecureInit/main/setup.sh
+wget https://raw.githubusercontent.com/AlekseyNice/SecureInit/main/setup.sh
 
 # Сделать исполняемым
 chmod +x setup.sh
@@ -149,7 +149,7 @@ sudo tail -f /var/log/auth.log
 
 ## 🐛 Нашли баг?
 
-Создайте [issue](https://github.com/YOUR_USERNAME/SecureInit/issues) с описанием проблемы.
+Создайте [issue](https://github.com/AlekseyNice/SecureInit/issues) с описанием проблемы.
 
 ## ⭐ Поддержите проект
 
