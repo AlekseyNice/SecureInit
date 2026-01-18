@@ -1,17 +1,21 @@
 #!/bin/bash
 
 #==============================================================================
-# Скрипт автоматической настройки безопасности сервера
-# Использование: curl -sSL https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main/setup.sh | bash
+# SecureInit v2.0 - Автоматизация настройки безопасности сервера
+# GitHub: https://github.com/AlekseyNice/SecureInit
 #==============================================================================
 
 set -e  # Остановка при ошибке
+
+VERSION="2.0.0"
 
 # Цвета для вывода
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
 #==============================================================================
@@ -22,21 +26,25 @@ print_info() {
 }
 
 print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
+    echo -e "${GREEN}[✓]${NC} $1"
 }
 
 print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
+    echo -e "${YELLOW}[⚠]${NC} $1"
 }
 
 print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "${RED}[✗]${NC} $1"
 }
 
 print_header() {
     echo -e "\n${GREEN}═══════════════════════════════════════════════════${NC}"
     echo -e "${GREEN}  $1${NC}"
     echo -e "${GREEN}═══════════════════════════════════════════════════${NC}\n"
+}
+
+print_step() {
+    echo -e "\n${CYAN}▶${NC} ${MAGENTA}$1${NC}"
 }
 
 #==============================================================================
@@ -48,17 +56,24 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 #==============================================================================
-# Приветствие и сбор данных
+# Приветствие
 #==============================================================================
 clear
-print_header "АВТОМАТИЧЕСКАЯ НАСТРОЙКА БЕЗОПАСНОСТИ СЕРВЕРА"
+print_header "SecureInit v${VERSION}"
 
-echo -e "${BLUE}Этот скрипт выполнит следующие действия:${NC}"
+echo -e "${CYAN}Автоматическая настройка безопасности Linux-сервера${NC}"
+echo ""
+echo -e "${BLUE}Новые возможности v2.0:${NC}"
+echo "  ${GREEN}✓${NC} Настройка UFW Firewall"
+echo "  ${GREEN}✓${NC} Генерация и установка SSH-ключей"
+echo "  ${GREEN}✓${NC} Автоматическое закрытие опасных портов"
+echo "  ${GREEN}✓${NC} Автоматические обновления безопасности"
+echo "  ${GREEN}✓${NC} Усиленная защита SSH"
+echo ""
+echo -e "${BLUE}Базовые функции:${NC}"
 echo "  • Обновление системы"
-echo "  • Установка необходимых пакетов (sudo, fail2ban, mc)"
-echo "  • Создание нового пользователя с sudo-правами"
-echo "  • Настройка SSH (отключение входа под root)"
-echo "  • Настройка fail2ban для защиты от брутфорса"
+echo "  • Создание пользователя с sudo-правами"
+echo "  • Настройка SSH и Fail2ban"
 echo ""
 
 read -p "Продолжить? (y/n): " -n 1 -r </dev/tty
@@ -69,9 +84,9 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 fi
 
 #==============================================================================
-# Сбор информации от пользователя
+# Сбор базовой информации
 #==============================================================================
-print_header "ВВОД ПАРАМЕТРОВ НАСТРОЙКИ"
+print_header "БАЗОВЫЕ ПАРАМЕТРЫ"
 
 # Имя пользователя
 while true; do
@@ -94,8 +109,47 @@ while true; do
     fi
 done
 
-# Пароль (только для нового пользователя)
-if [[ "$USER_EXISTS" == false ]]; then
+#==============================================================================
+# Выбор метода аутентификации
+#==============================================================================
+print_header "МЕТОД АУТЕНТИФИКАЦИИ SSH"
+
+echo "Выберите метод аутентификации:"
+echo "  1) Пароль (менее безопасно)"
+echo "  2) SSH-ключ (рекомендуется)"
+echo "  3) Оба метода"
+echo ""
+
+while true; do
+    read -p "Ваш выбор [1-3]: " AUTH_METHOD </dev/tty
+    case $AUTH_METHOD in
+        1)
+            USE_PASSWORD=true
+            USE_SSH_KEY=false
+            DISABLE_PASSWORD_AUTH=false
+            break
+            ;;
+        2)
+            USE_PASSWORD=false
+            USE_SSH_KEY=true
+            DISABLE_PASSWORD_AUTH=true
+            break
+            ;;
+        3)
+            USE_PASSWORD=true
+            USE_SSH_KEY=true
+            DISABLE_PASSWORD_AUTH=false
+            break
+            ;;
+        *)
+            print_error "Неверный выбор. Введите 1, 2 или 3"
+            ;;
+    esac
+done
+
+# Пароль (если выбран)
+if [[ "$USE_PASSWORD" == true ]] && [[ "$USER_EXISTS" == false ]]; then
+    echo ""
     while true; do
         read -s -p "Введите пароль для пользователя $USERNAME: " PASSWORD </dev/tty
         echo ""
@@ -113,7 +167,18 @@ if [[ "$USER_EXISTS" == false ]]; then
     done
 fi
 
+# SSH-ключ (если выбран)
+if [[ "$USE_SSH_KEY" == true ]]; then
+    echo ""
+    print_info "SSH-ключи будут сгенерированы автоматически"
+    SSH_KEY_PATH="/root/.ssh/${USERNAME}_key"
+fi
+
+#==============================================================================
 # SSH порт
+#==============================================================================
+print_header "НАСТРОЙКА SSH"
+
 read -p "Изменить SSH порт? (по умолчанию 22) [y/n]: " -n 1 -r </dev/tty
 echo ""
 if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -129,15 +194,44 @@ else
     SSH_PORT=22
 fi
 
-# IP адреса для игнорирования в fail2ban
-read -p "Введите IP адреса для игнорирования в fail2ban (через пробел, Enter для пропуска): " IGNORE_IPS </dev/tty
+#==============================================================================
+# Настройка Firewall (UFW)
+#==============================================================================
+print_header "НАСТРОЙКА FIREWALL (UFW)"
+
+echo "Firewall будет настроен с базовыми правилами:"
+echo "  • SSH (порт $SSH_PORT) - РАЗРЕШЕН"
+echo "  • HTTP (порт 80) - на выбор"
+echo "  • HTTPS (порт 443) - на выбор"
+echo "  • Все остальные входящие - ЗАПРЕЩЕНЫ"
+echo ""
+
+read -p "Открыть порт 80 (HTTP)? [y/n]: " -n 1 -r </dev/tty
+echo ""
+[[ $REPLY =~ ^[Yy]$ ]] && OPEN_HTTP=true || OPEN_HTTP=false
+
+read -p "Открыть порт 443 (HTTPS)? [y/n]: " -n 1 -r </dev/tty
+echo ""
+[[ $REPLY =~ ^[Yy]$ ]] && OPEN_HTTPS=true || OPEN_HTTPS=false
+
+read -p "Хотите открыть дополнительные порты? [y/n]: " -n 1 -r </dev/tty
+echo ""
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    read -p "Введите порты через пробел (например: 3000 8080): " CUSTOM_PORTS </dev/tty
+fi
+
+#==============================================================================
+# Параметры Fail2ban
+#==============================================================================
+print_header "НАСТРОЙКА FAIL2BAN"
+
+read -p "Введите IP адреса для игнорирования (через пробел, Enter для пропуска): " IGNORE_IPS </dev/tty
 if [[ -z "$IGNORE_IPS" ]]; then
     IGNORE_IPS="127.0.0.1/8"
 else
     IGNORE_IPS="127.0.0.1/8 $IGNORE_IPS"
 fi
 
-# Параметры fail2ban
 read -p "Максимальное количество попыток входа (по умолчанию 3): " MAXRETRY </dev/tty
 MAXRETRY=${MAXRETRY:-3}
 
@@ -145,16 +239,57 @@ read -p "Время бана в часах (по умолчанию 24): " BANTI
 BANTIME_HOURS=${BANTIME_HOURS:-24}
 
 #==============================================================================
+# Дополнительные опции безопасности
+#==============================================================================
+print_header "ДОПОЛНИТЕЛЬНЫЕ ОПЦИИ"
+
+read -p "Включить автоматические обновления безопасности? [y/n]: " -n 1 -r </dev/tty
+echo ""
+[[ $REPLY =~ ^[Yy]$ ]] && AUTO_UPDATES=true || AUTO_UPDATES=false
+
+#==============================================================================
 # Подтверждение параметров
 #==============================================================================
 print_header "ПОДТВЕРЖДЕНИЕ ПАРАМЕТРОВ"
-echo "Имя пользователя: $USERNAME"
-echo "SSH порт: $SSH_PORT"
-echo "Fail2ban - игнорируемые IP: $IGNORE_IPS"
-echo "Fail2ban - макс. попыток: $MAXRETRY"
-echo "Fail2ban - время бана: ${BANTIME_HOURS}ч"
-echo ""
 
+echo -e "${CYAN}Пользователь:${NC}"
+echo "  • Имя: $USERNAME"
+if [[ "$USE_PASSWORD" == true ]]; then
+    echo "  • Пароль: установлен"
+fi
+if [[ "$USE_SSH_KEY" == true ]]; then
+    echo "  • SSH-ключ: будет сгенерирован"
+fi
+
+echo ""
+echo -e "${CYAN}SSH:${NC}"
+echo "  • Порт: $SSH_PORT"
+if [[ "$DISABLE_PASSWORD_AUTH" == true ]]; then
+    echo "  • Парольная аутентификация: ОТКЛЮЧЕНА (только ключи)"
+else
+    echo "  • Парольная аутентификация: включена"
+fi
+
+echo ""
+echo -e "${CYAN}Firewall (UFW):${NC}"
+echo "  • SSH порт $SSH_PORT: ОТКРЫТ"
+[[ "$OPEN_HTTP" == true ]] && echo "  • HTTP (80): ОТКРЫТ" || echo "  • HTTP (80): закрыт"
+[[ "$OPEN_HTTPS" == true ]] && echo "  • HTTPS (443): ОТКРЫТ" || echo "  • HTTPS (443): закрыт"
+if [[ -n "$CUSTOM_PORTS" ]]; then
+    echo "  • Дополнительные порты: $CUSTOM_PORTS"
+fi
+
+echo ""
+echo -e "${CYAN}Fail2ban:${NC}"
+echo "  • Игнорируемые IP: $IGNORE_IPS"
+echo "  • Макс. попыток: $MAXRETRY"
+echo "  • Время бана: ${BANTIME_HOURS}ч"
+
+echo ""
+echo -e "${CYAN}Дополнительно:${NC}"
+[[ "$AUTO_UPDATES" == true ]] && echo "  • Автообновления: включены" || echo "  • Автообновления: отключены"
+
+echo ""
 read -p "Начать установку с этими параметрами? (y/n): " -n 1 -r </dev/tty
 echo ""
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -163,66 +298,136 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 fi
 
 #==============================================================================
-# Установка и настройка
+# УСТАНОВКА И НАСТРОЙКА
 #==============================================================================
 
 # 1. Обновление системы
-print_header "ШАГ 1: ОБНОВЛЕНИЕ СИСТЕМЫ"
-print_info "Обновление списка пакетов..."
+print_header "ШАГ 1/8: ОБНОВЛЕНИЕ СИСТЕМЫ"
+print_step "Обновление списка пакетов..."
 apt update -qq
 print_success "Система обновлена"
 
 # 2. Установка пакетов
-print_header "ШАГ 2: УСТАНОВКА ПАКЕТОВ"
-print_info "Установка sudo, fail2ban, mc, openssh-server..."
-apt install -y sudo fail2ban mc openssh-server > /dev/null 2>&1
+print_header "ШАГ 2/8: УСТАНОВКА ПАКЕТОВ"
+print_step "Установка необходимых пакетов..."
+DEBIAN_FRONTEND=noninteractive apt install -y sudo fail2ban mc openssh-server ufw unattended-upgrades > /dev/null 2>&1
 print_success "Пакеты установлены"
 
 # 3. Создание/настройка пользователя
-print_header "ШАГ 3: НАСТРОЙКА ПОЛЬЗОВАТЕЛЯ"
+print_header "ШАГ 3/8: НАСТРОЙКА ПОЛЬЗОВАТЕЛЯ"
 if [[ "$USER_EXISTS" == false ]]; then
-    print_info "Создание пользователя $USERNAME..."
+    print_step "Создание пользователя $USERNAME..."
     useradd -m -s /bin/bash "$USERNAME"
-    echo "$USERNAME:$PASSWORD" | chpasswd
+    if [[ "$USE_PASSWORD" == true ]]; then
+        echo "$USERNAME:$PASSWORD" | chpasswd
+    fi
     print_success "Пользователь создан"
 else
     print_info "Использование существующего пользователя $USERNAME"
 fi
 
-print_info "Добавление в группу sudo..."
+print_step "Добавление в группу sudo..."
 usermod -aG sudo "$USERNAME"
 
-print_info "Настройка sudo без пароля..."
+print_step "Настройка sudo..."
 echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME
 chmod 0440 /etc/sudoers.d/$USERNAME
 print_success "Пользователь настроен"
 
-# 4. Настройка SSH
-print_header "ШАГ 4: НАСТРОЙКА SSH"
-print_info "Создание резервной копии конфигурации SSH..."
+# 4. Настройка SSH-ключей
+if [[ "$USE_SSH_KEY" == true ]]; then
+    print_header "ШАГ 4/8: НАСТРОЙКА SSH-КЛЮЧЕЙ"
+    
+    print_step "Генерация SSH-ключей..."
+    mkdir -p /root/.ssh
+    ssh-keygen -t ed25519 -f "$SSH_KEY_PATH" -N "" -C "${USERNAME}@$(hostname)" > /dev/null 2>&1
+    
+    print_step "Установка публичного ключа для $USERNAME..."
+    USER_HOME=$(eval echo ~$USERNAME)
+    mkdir -p "$USER_HOME/.ssh"
+    cat "${SSH_KEY_PATH}.pub" > "$USER_HOME/.ssh/authorized_keys"
+    chown -R $USERNAME:$USERNAME "$USER_HOME/.ssh"
+    chmod 700 "$USER_HOME/.ssh"
+    chmod 600 "$USER_HOME/.ssh/authorized_keys"
+    
+    print_success "SSH-ключи настроены"
+    print_warning "ВАЖНО! Приватный ключ сохранен в: ${SSH_KEY_PATH}"
+    print_warning "Скопируйте его на локальную машину ПЕРЕД закрытием сессии!"
+    echo ""
+    echo -e "${YELLOW}Команда для копирования ключа:${NC}"
+    echo -e "${CYAN}cat ${SSH_KEY_PATH}${NC}"
+    echo ""
+else
+    print_header "ШАГ 4/8: НАСТРОЙКА SSH-КЛЮЧЕЙ"
+    print_info "Пропущено (выбрана парольная аутентификация)"
+fi
+
+# 5. Настройка SSH
+print_header "ШАГ 5/8: НАСТРОЙКА SSH"
+print_step "Создание резервной копии..."
 cp /etc/ssh/sshd_config /etc/ssh/sshd_config.backup.$(date +%Y%m%d_%H%M%S)
 
-print_info "Настройка параметров безопасности SSH..."
+print_step "Настройка параметров безопасности SSH..."
 sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
-sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
 sed -i 's/^#*PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+sed -i 's/^#*PermitEmptyPasswords.*/PermitEmptyPasswords no/' /etc/ssh/sshd_config
+sed -i 's/^#*X11Forwarding.*/X11Forwarding no/' /etc/ssh/sshd_config
+sed -i 's/^#*MaxAuthTries.*/MaxAuthTries 3/' /etc/ssh/sshd_config
+
+if [[ "$DISABLE_PASSWORD_AUTH" == true ]]; then
+    sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+    print_info "Парольная аутентификация ОТКЛЮЧЕНА"
+else
+    sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+fi
 
 if [[ "$SSH_PORT" != "22" ]]; then
-    print_info "Изменение SSH порта на $SSH_PORT..."
+    print_step "Изменение SSH порта на $SSH_PORT..."
     sed -i "s/^#*Port.*/Port $SSH_PORT/" /etc/ssh/sshd_config
 fi
 
-print_info "Перезапуск SSH..."
+print_step "Перезапуск SSH..."
 systemctl restart ssh || systemctl restart sshd
 print_success "SSH настроен"
 
-if [[ "$SSH_PORT" != "22" ]]; then
-    print_warning "SSH порт изменен на $SSH_PORT. Не забудьте использовать: ssh -p $SSH_PORT $USERNAME@server_ip"
+# 6. Настройка UFW Firewall
+print_header "ШАГ 6/8: НАСТРОЙКА FIREWALL (UFW)"
+
+print_step "Сброс правил UFW..."
+ufw --force reset > /dev/null 2>&1
+
+print_step "Настройка базовых правил..."
+ufw default deny incoming > /dev/null 2>&1
+ufw default allow outgoing > /dev/null 2>&1
+
+print_step "Открытие SSH порта $SSH_PORT..."
+ufw allow $SSH_PORT/tcp comment 'SSH' > /dev/null 2>&1
+
+if [[ "$OPEN_HTTP" == true ]]; then
+    print_step "Открытие HTTP порта 80..."
+    ufw allow 80/tcp comment 'HTTP' > /dev/null 2>&1
 fi
 
-# 5. Настройка fail2ban
-print_header "ШАГ 5: НАСТРОЙКА FAIL2BAN"
-print_info "Создание конфигурации fail2ban..."
+if [[ "$OPEN_HTTPS" == true ]]; then
+    print_step "Открытие HTTPS порта 443..."
+    ufw allow 443/tcp comment 'HTTPS' > /dev/null 2>&1
+fi
+
+if [[ -n "$CUSTOM_PORTS" ]]; then
+    for port in $CUSTOM_PORTS; do
+        print_step "Открытие порта $port..."
+        ufw allow $port/tcp comment 'Custom' > /dev/null 2>&1
+    done
+fi
+
+print_step "Активация UFW..."
+ufw --force enable > /dev/null 2>&1
+
+print_success "Firewall настроен и активирован"
+
+# 7. Настройка Fail2ban
+print_header "ШАГ 7/8: НАСТРОЙКА FAIL2BAN"
+print_step "Создание конфигурации fail2ban..."
 
 cat > /etc/fail2ban/jail.local << EOF
 [DEFAULT]
@@ -238,37 +443,111 @@ logpath   = %(sshd_log)s
 backend   = %(sshd_backend)s
 EOF
 
-print_info "Запуск fail2ban..."
+print_step "Запуск fail2ban..."
 systemctl enable fail2ban > /dev/null 2>&1
 systemctl restart fail2ban
 print_success "Fail2ban настроен и запущен"
 
+# 8. Автоматические обновления
+if [[ "$AUTO_UPDATES" == true ]]; then
+    print_header "ШАГ 8/8: АВТОМАТИЧЕСКИЕ ОБНОВЛЕНИЯ"
+    print_step "Настройка unattended-upgrades..."
+    
+    cat > /etc/apt/apt.conf.d/50unattended-upgrades << 'EOF'
+Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}-security";
+};
+Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+Unattended-Upgrade::MinimalSteps "true";
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+Unattended-Upgrade::Automatic-Reboot "false";
+EOF
+
+    cat > /etc/apt/apt.conf.d/20auto-upgrades << EOF
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+APT::Periodic::AutocleanInterval "7";
+EOF
+
+    print_success "Автоматические обновления настроены"
+else
+    print_header "ШАГ 8/8: АВТОМАТИЧЕСКИЕ ОБНОВЛЕНИЯ"
+    print_info "Пропущено (не выбрано)"
+fi
+
 #==============================================================================
 # Финальная информация
 #==============================================================================
-print_header "УСТАНОВКА ЗАВЕРШЕНА УСПЕШНО!"
+print_header "✅ УСТАНОВКА ЗАВЕРШЕНА УСПЕШНО!"
 
-echo -e "${GREEN}✓${NC} Система обновлена"
-echo -e "${GREEN}✓${NC} Пользователь $USERNAME создан и настроен"
-echo -e "${GREEN}✓${NC} SSH настроен (порт: $SSH_PORT, вход под root запрещен)"
-echo -e "${GREEN}✓${NC} Fail2ban активирован и защищает систему"
+echo -e "${GREEN}Выполнено:${NC}"
+echo -e "  ${GREEN}✓${NC} Система обновлена"
+echo -e "  ${GREEN}✓${NC} Пользователь $USERNAME создан и настроен"
+echo -e "  ${GREEN}✓${NC} SSH настроен (порт: $SSH_PORT)"
+if [[ "$USE_SSH_KEY" == true ]]; then
+    echo -e "  ${GREEN}✓${NC} SSH-ключи сгенерированы"
+fi
+echo -e "  ${GREEN}✓${NC} UFW Firewall настроен и активен"
+echo -e "  ${GREEN}✓${NC} Fail2ban защищает от брутфорса"
+if [[ "$AUTO_UPDATES" == true ]]; then
+    echo -e "  ${GREEN}✓${NC} Автоматические обновления включены"
+fi
 
 echo ""
-print_header "ВАЖНАЯ ИНФОРМАЦИЯ"
-echo -e "${YELLOW}⚠${NC}  Для подключения к серверу используйте:"
-echo -e "   ${BLUE}ssh -p $SSH_PORT $USERNAME@your_server_ip${NC}"
+print_header "⚠️  КРИТИЧЕСКИ ВАЖНАЯ ИНФОРМАЦИЯ"
+
+if [[ "$USE_SSH_KEY" == true ]]; then
+    echo -e "${RED}1. СОХРАНИТЕ ПРИВАТНЫЙ SSH-КЛЮЧ!${NC}"
+    echo -e "   Расположение: ${CYAN}${SSH_KEY_PATH}${NC}"
+    echo ""
+    echo -e "   ${YELLOW}На вашей локальной машине выполните:${NC}"
+    echo -e "   ${CYAN}scp -P $SSH_PORT root@ВАШ_IP:${SSH_KEY_PATH} ~/.ssh/${USERNAME}_key${NC}"
+    echo -e "   ${CYAN}chmod 600 ~/.ssh/${USERNAME}_key${NC}"
+    echo ""
+fi
+
+echo -e "${RED}2. ПРОВЕРЬТЕ ПОДКЛЮЧЕНИЕ В НОВОЙ СЕССИИ!${NC}"
+echo -e "   ${YELLOW}Команда для подключения:${NC}"
+if [[ "$USE_SSH_KEY" == true ]]; then
+    echo -e "   ${CYAN}ssh -i ~/.ssh/${USERNAME}_key -p $SSH_PORT $USERNAME@ВАШ_IP${NC}"
+else
+    echo -e "   ${CYAN}ssh -p $SSH_PORT $USERNAME@ВАШ_IP${NC}"
+fi
+
 echo ""
-echo -e "${YELLOW}⚠${NC}  Перед завершением текущей сессии:"
-echo -e "   1. Откройте новое SSH соединение и проверьте вход"
-echo -e "   2. Убедитесь, что можете использовать sudo"
-echo -e "   3. Только после этого закрывайте текущую сессию"
+echo -e "${RED}3. НЕ ЗАКРЫВАЙТЕ ТЕКУЩУЮ СЕССИЮ${NC}"
+echo -e "   пока не проверите вход в новой сессии!"
+
+echo ""
+print_header "📊 ПОЛЕЗНЫЕ КОМАНДЫ"
+
+echo -e "${CYAN}Firewall (UFW):${NC}"
+echo "  • Статус UFW:             sudo ufw status verbose"
+echo "  • Список правил:          sudo ufw status numbered"
+echo "  • Открыть порт:           sudo ufw allow ПОРТ/tcp"
+echo "  • Закрыть порт:           sudo ufw delete НОМЕР_ПРАВИЛА"
 echo ""
 
-print_info "Полезные команды для проверки:"
-echo "  • Статус fail2ban:        sudo fail2ban-client status"
-echo "  • Список заблокированных: sudo fail2ban-client status sshd"
-echo "  • Разблокировать IP:      sudo fail2ban-client unban <IP>"
+echo -e "${CYAN}Fail2ban:${NC}"
+echo "  • Статус:                 sudo fail2ban-client status"
+echo "  • Заблокированные IP:     sudo fail2ban-client status sshd"
+echo "  • Разблокировать IP:      sudo fail2ban-client unban IP_АДРЕС"
+echo ""
+
+echo -e "${CYAN}SSH:${NC}"
 echo "  • Проверить SSH порт:     sudo netstat -tlnp | grep ssh"
+echo "  • Просмотр логов SSH:     sudo tail -f /var/log/auth.log"
 echo ""
 
-print_success "Настройка безопасности сервера завершена!"
+if [[ "$AUTO_UPDATES" == true ]]; then
+    echo -e "${CYAN}Автообновления:${NC}"
+    echo "  • Проверить статус:       sudo systemctl status unattended-upgrades"
+    echo "  • Логи обновлений:        sudo cat /var/log/unattended-upgrades/unattended-upgrades.log"
+    echo ""
+fi
+
+print_success "🎉 SecureInit v${VERSION} - Настройка завершена!"
+echo ""
+echo -e "${CYAN}Поддержите проект: ${NC}https://github.com/AlekseyNice/SecureInit ⭐"
+echo ""
