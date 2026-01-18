@@ -29,6 +29,20 @@ cat <<'EOF'
  ╚══════╝╚══════╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝╚═╝  ╚═══╝╚═╝   ╚═╝   
 EOF
 
+clear
+echo -e "${D_GREEN}"
+print_banner
+echo -e "${NC}"
+
+echo -e "${DIM}${D_GREEN}:: loading security modules${NC}"
+echo -e "${DIM}${D_GREEN}:: enforcing secure defaults${NC}"
+echo -e "${DIM}${D_GREEN}:: locking attack surface${NC}"
+echo
+echo -e "${D_GREEN}author:${NC} AlekseyNice"
+echo -e "${D_GREEN}version:${NC} v${VERSION}"
+echo -e "${D_GREEN}repo:${NC} https://github.com/AlekseyNice/SecureInit"
+echo
+
 echo
 echo "🔐 SecureInit — initial server hardening"
 echo "👤 Author: AlekseyNice"
