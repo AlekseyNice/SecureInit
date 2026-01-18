@@ -33,13 +33,12 @@ clear
 echo -e "${D_GREEN}"
 print_banner() {
 cat <<'EOF'
-[ eliot@localhost ]$ init --secure
----------------------------------
-  E L I O T
-  system security bootstrap
----------------------------------
+[    0.000000] ELIOT: security init subsystem loaded
+[    0.000001] ELIOT: enforcing hardened defaults
+[    0.000002] ELIOT: entering secure mode
 EOF
 }
+
 echo -e "${NC}"
 
 echo -e "${DIM}${D_GREEN}:: loading security modules${NC}"
