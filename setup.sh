@@ -61,7 +61,7 @@ echo "  • Настройка SSH (отключение входа под root)
 echo "  • Настройка fail2ban для защиты от брутфорса"
 echo ""
 
-read -p "Продолжить? (y/n): " -n 1 -r
+read -p "Продолжить? (y/n): " -n 1 -r </dev/tty
 echo ""
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     print_warning "Установка отменена"
@@ -75,14 +75,14 @@ print_header "ВВОД ПАРАМЕТРОВ НАСТРОЙКИ"
 
 # Имя пользователя
 while true; do
-    read -p "Введите имя нового пользователя: " USERNAME
+    read -p "Введите имя нового пользователя: " USERNAME </dev/tty
     if [[ -z "$USERNAME" ]]; then
         print_error "Имя пользователя не может быть пустым"
         continue
     fi
     if id "$USERNAME" &>/dev/null; then
         print_warning "Пользователь $USERNAME уже существует"
-        read -p "Использовать существующего пользователя? (y/n): " -n 1 -r
+        read -p "Использовать существующего пользователя? (y/n): " -n 1 -r </dev/tty
         echo ""
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             USER_EXISTS=true
@@ -97,13 +97,13 @@ done
 # Пароль (только для нового пользователя)
 if [[ "$USER_EXISTS" == false ]]; then
     while true; do
-        read -s -p "Введите пароль для пользователя $USERNAME: " PASSWORD
+        read -s -p "Введите пароль для пользователя $USERNAME: " PASSWORD </dev/tty
         echo ""
         if [[ ${#PASSWORD} -lt 8 ]]; then
             print_error "Пароль должен содержать минимум 8 символов"
             continue
         fi
-        read -s -p "Подтвердите пароль: " PASSWORD_CONFIRM
+        read -s -p "Подтвердите пароль: " PASSWORD_CONFIRM </dev/tty
         echo ""
         if [[ "$PASSWORD" != "$PASSWORD_CONFIRM" ]]; then
             print_error "Пароли не совпадают"
@@ -114,11 +114,11 @@ if [[ "$USER_EXISTS" == false ]]; then
 fi
 
 # SSH порт
-read -p "Изменить SSH порт? (по умолчанию 22) [y/n]: " -n 1 -r
+read -p "Изменить SSH порт? (по умолчанию 22) [y/n]: " -n 1 -r </dev/tty
 echo ""
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     while true; do
-        read -p "Введите новый SSH порт (1024-65535): " SSH_PORT
+        read -p "Введите новый SSH порт (1024-65535): " SSH_PORT </dev/tty
         if [[ "$SSH_PORT" =~ ^[0-9]+$ ]] && [ "$SSH_PORT" -ge 1024 ] && [ "$SSH_PORT" -le 65535 ]; then
             break
         else
@@ -130,7 +130,7 @@ else
 fi
 
 # IP адреса для игнорирования в fail2ban
-read -p "Введите IP адреса для игнорирования в fail2ban (через пробел, Enter для пропуска): " IGNORE_IPS
+read -p "Введите IP адреса для игнорирования в fail2ban (через пробел, Enter для пропуска): " IGNORE_IPS </dev/tty
 if [[ -z "$IGNORE_IPS" ]]; then
     IGNORE_IPS="127.0.0.1/8"
 else
@@ -138,10 +138,10 @@ else
 fi
 
 # Параметры fail2ban
-read -p "Максимальное количество попыток входа (по умолчанию 3): " MAXRETRY
+read -p "Максимальное количество попыток входа (по умолчанию 3): " MAXRETRY </dev/tty
 MAXRETRY=${MAXRETRY:-3}
 
-read -p "Время бана в часах (по умолчанию 24): " BANTIME_HOURS
+read -p "Время бана в часах (по умолчанию 24): " BANTIME_HOURS </dev/tty
 BANTIME_HOURS=${BANTIME_HOURS:-24}
 
 #==============================================================================
@@ -155,7 +155,7 @@ echo "Fail2ban - макс. попыток: $MAXRETRY"
 echo "Fail2ban - время бана: ${BANTIME_HOURS}ч"
 echo ""
 
-read -p "Начать установку с этими параметрами? (y/n): " -n 1 -r
+read -p "Начать установку с этими параметрами? (y/n): " -n 1 -r </dev/tty
 echo ""
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     print_warning "Установка отменена"
