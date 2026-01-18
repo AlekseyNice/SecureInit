@@ -63,6 +63,7 @@ echo ""
 
 read -p "Продолжить? (y/n): " -n 1 -r
 echo
+echo
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     print_warning "Установка отменена"
     exit 0
