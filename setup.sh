@@ -62,7 +62,7 @@ echo "  • Настройка fail2ban для защиты от брутфор�
 echo ""
 
 read -p "Продолжить? (y/n): " -n 1 -r
-echo
+echo ""
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     print_warning "Установка отменена"
     exit 0
@@ -83,7 +83,7 @@ while true; do
     if id "$USERNAME" &>/dev/null; then
         print_warning "Пользователь $USERNAME уже существует"
         read -p "Использовать существующего пользователя? (y/n): " -n 1 -r
-        echo
+        echo ""
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             USER_EXISTS=true
             break
@@ -98,13 +98,13 @@ done
 if [[ "$USER_EXISTS" == false ]]; then
     while true; do
         read -s -p "Введите пароль для пользователя $USERNAME: " PASSWORD
-        echo
+        echo ""
         if [[ ${#PASSWORD} -lt 8 ]]; then
             print_error "Пароль должен содержать минимум 8 символов"
             continue
         fi
         read -s -p "Подтвердите пароль: " PASSWORD_CONFIRM
-        echo
+        echo ""
         if [[ "$PASSWORD" != "$PASSWORD_CONFIRM" ]]; then
             print_error "Пароли не совпадают"
             continue
@@ -115,7 +115,7 @@ fi
 
 # SSH порт
 read -p "Изменить SSH порт? (по умолчанию 22) [y/n]: " -n 1 -r
-echo
+echo ""
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     while true; do
         read -p "Введите новый SSH порт (1024-65535): " SSH_PORT
@@ -156,7 +156,7 @@ echo "Fail2ban - время бана: ${BANTIME_HOURS}ч"
 echo ""
 
 read -p "Начать установку с этими параметрами? (y/n): " -n 1 -r
-echo
+echo ""
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     print_warning "Установка отменена"
     exit 0
