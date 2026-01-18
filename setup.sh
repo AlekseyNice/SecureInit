@@ -31,7 +31,15 @@ EOF
 
 clear
 echo -e "${D_GREEN}"
-print_banner
+print_banner() {
+cat <<'EOF'
+[ eliot@localhost ]$ init --secure
+---------------------------------
+  E L I O T
+  system security bootstrap
+---------------------------------
+EOF
+}
 echo -e "${NC}"
 
 echo -e "${DIM}${D_GREEN}:: loading security modules${NC}"
