@@ -43,7 +43,64 @@ fi
 
 # Временный файл для ответов
 TEMP_FILE=$(mktemp)
-trap "rm -f $TEMP_FILE" EXIT
+
+#==============================================================================
+# Настройка "хакерского" стиля для dialog (Matrix style)
+#==============================================================================
+export DIALOGRC=/tmp/.dialogrc_secureinit_$
+cat << 'EOF' > "$DIALOGRC"
+# SecureInit - Matrix/Hacker Style Theme
+# Цвета: 0=Black, 1=Red, 2=Green, 3=Yellow, 4=Blue, 5=Magenta, 6=Cyan, 7=White
+
+use_shadow = ON
+use_colors = ON
+
+# Основной фон и текст (Зеленый на Черном - как в Matrix)
+screen_color = (GREEN,BLACK,OFF)
+dialog_color = (GREEN,BLACK,OFF)
+title_color = (BLACK,GREEN,ON)
+border_color = (GREEN,BLACK,ON)
+border2_color = (GREEN,BLACK,ON)
+
+# Кнопки
+button_active_color = (BLACK,GREEN,ON)
+button_inactive_color = (GREEN,BLACK,OFF)
+button_key_active_color = (RED,GREEN,ON)
+button_key_inactive_color = (RED,BLACK,ON)
+button_label_active_color = (BLACK,GREEN,ON)
+button_label_inactive_color = (GREEN,BLACK,OFF)
+
+# Списки и меню
+tag_color = (GREEN,BLACK,ON)
+tag_key_color = (RED,BLACK,ON)
+item_color = (GREEN,BLACK,OFF)
+item_selected_color = (BLACK,GREEN,ON)
+tag_selected_color = (BLACK,GREEN,ON)
+menubox_color = (GREEN,BLACK,OFF)
+menubox_border_color = (GREEN,BLACK,ON)
+menubox_border2_color = (GREEN,BLACK,ON)
+
+# Поля ввода
+inputbox_color = (GREEN,BLACK,OFF)
+inputbox_border_color = (GREEN,BLACK,ON)
+inputbox_border2_color = (GREEN,BLACK,ON)
+
+# Checklist
+check_color = (GREEN,BLACK,OFF)
+check_selected_color = (BLACK,GREEN,ON)
+
+# Дополнительные элементы
+searchbox_color = (GREEN,BLACK,OFF)
+searchbox_border_color = (GREEN,BLACK,ON)
+searchbox_title_color = (BLACK,GREEN,ON)
+
+position_indicator_color = (GREEN,BLACK,ON)
+
+# Gauge (прогресс бар)
+gauge_color = (BLACK,GREEN,ON)
+EOF
+
+trap "rm -f $TEMP_FILE $DIALOGRC" EXIT
 
 #==============================================================================
 # Функции для работы с dialog
@@ -91,26 +148,32 @@ show_infobox() {
 #==============================================================================
 # Приветствие
 #==============================================================================
-show_msgbox "SecureInit v${VERSION}" "\
-Добро пожаловать в SecureInit!
+show_msgbox "█ SecureInit v${VERSION} █" "\
+╔═══════════════════════════════════════════════════════════╗
+║                                                           ║
+║   ░█▀▀░█▀▀░█▀▀░█░█░█▀▄░█▀▀░▀█▀░█▀█░█▀▀░▀█▀░▀█▀░█░█░░    ║
+║   ░▀▀█░█▀▀░█░░░█░█░█▀▄░█▀▀░░█░░█░█░█▀▀░░█░░░█░░▀▄▀░░    ║
+║   ░▀▀▀░▀▀▀░▀▀▀░▀▀▀░▀░▀░▀▀▀░▀▀▀░▀░▀░▀▀▀░░▀░░░▀░░░▀░░░    ║
+║                                                           ║
+╚═══════════════════════════════════════════════════════════╝
 
-Этот скрипт выполнит автоматическую настройку безопасности вашего Linux-сервера.
+>>> СИСТЕМА АВТОМАТИЧЕСКОЙ ЗАЩИТЫ СЕРВЕРА <<<
 
-НОВЫЕ ВОЗМОЖНОСТИ v2.0:
-✓ Настройка UFW Firewall
-✓ Генерация SSH-ключей (Ed25519)
-✓ Автоматические обновления безопасности
-✓ Усиленная защита SSH
-✓ Графический интерфейс
+[!] НОВЫЕ МОДУЛИ v2.0:
+ ► UFW Firewall Protection
+ ► SSH Key Generation (Ed25519)
+ ► Auto Security Updates
+ ► Enhanced SSH Hardening
+ ► Matrix-Style Interface
 
-БАЗОВЫЕ ФУНКЦИИ:
-• Обновление системы
-• Создание пользователя с sudo
-• Настройка SSH и Fail2ban
+[!] БАЗОВЫЕ МОДУЛИ:
+ • System Update & Upgrade
+ • User Creation & Sudo Config
+ • SSH & Fail2ban Setup
 
-Нажмите OK для продолжения..."
+[ENTER] для инициализации защитных протоколов..."
 
-if ! show_yesno "Подтверждение" "Вы готовы начать настройку безопасности?"; then
+if ! show_yesno "█ ПОДТВЕРЖДЕНИЕ █" "[?] Запустить процедуру укрепления безопасности сервера?\n\n[!] После запуска будут выполнены необнеобратимые изменения в конфигурации системы.\n\n>>> Продолжить?"; then
     clear
     echo -e "${YELLOW}[⚠]${NC} Установка отменена пользователем"
     exit 0
@@ -122,15 +185,15 @@ fi
 
 # Имя пользователя
 while true; do
-    USERNAME=$(show_inputbox "Создание пользователя" "Введите имя нового пользователя:" "")
+    USERNAME=$(show_inputbox "█ СОЗДАНИЕ ПОЛЬЗОВАТЕЛЯ █" "[>] Введите имя нового системного пользователя:\n\n[!] Этот пользователь получит полные права sudo" "")
     
     if [[ -z "$USERNAME" ]]; then
-        show_msgbox "Ошибка" "Имя пользователя не может быть пустым!"
+        show_msgbox "█ ОШИБКА █" "[✗] Имя пользователя не может быть пустым!\n\n[!] Требуется валидное имя пользователя для продолжения."
         continue
     fi
     
     if id "$USERNAME" &>/dev/null; then
-        if show_yesno "Пользователь существует" "Пользователь $USERNAME уже существует.\n\nИспользовать существующего пользователя?"; then
+        if show_yesno "█ ПОЛЬЗОВАТЕЛЬ ОБНАРУЖЕН █" "[!] Пользователь '$USERNAME' уже существует в системе.\n\n[?] Использовать существующего пользователя?"; then
             USER_EXISTS=true
             break
         fi
@@ -143,10 +206,10 @@ done
 #==============================================================================
 # Выбор метода аутентификации
 #==============================================================================
-AUTH_METHOD=$(show_menu "Метод аутентификации SSH" "Выберите способ входа на сервер:" \
-    "1" "Пароль (менее безопасно)" \
-    "2" "SSH-ключ (рекомендуется)" \
-    "3" "Оба метода")
+AUTH_METHOD=$(show_menu "█ МЕТОД АУТЕНТИФИКАЦИИ █" "[>] Выберите метод доступа к серверу:\n\n[!] Рекомендуется использовать SSH-ключи для максимальной безопасности" \
+    "1" "► Пароль (базовая защита)" \
+    "2" "► SSH-ключ (рекомендовано) ★" \
+    "3" "► Оба метода (гибридный режим)")
 
 case $AUTH_METHOD in
     1)
@@ -169,17 +232,17 @@ esac
 # Установка пароля (если выбран)
 if [[ "$USE_PASSWORD" == true ]] && [[ "$USER_EXISTS" == false ]]; then
     while true; do
-        PASSWORD=$(show_passwordbox "Установка пароля" "Введите пароль для пользователя $USERNAME:\n(минимум 8 символов)")
+        PASSWORD=$(show_passwordbox "█ УСТАНОВКА ПАРОЛЯ █" "[>] Введите пароль для пользователя '$USERNAME':\n\n[!] Минимум 8 символов\n[!] Используйте сложные комбинации")
         
         if [[ ${#PASSWORD} -lt 8 ]]; then
-            show_msgbox "Ошибка" "Пароль должен содержать минимум 8 символов!"
+            show_msgbox "█ ОШИБКА █" "[✗] Пароль слишком короткий!\n\n[!] Требуется минимум 8 символов для базовой защиты."
             continue
         fi
         
-        PASSWORD_CONFIRM=$(show_passwordbox "Подтверждение пароля" "Подтвердите пароль:")
+        PASSWORD_CONFIRM=$(show_passwordbox "█ ПОДТВЕРЖДЕНИЕ █" "[>] Подтвердите введенный пароль:")
         
         if [[ "$PASSWORD" != "$PASSWORD_CONFIRM" ]]; then
-            show_msgbox "Ошибка" "Пароли не совпадают!"
+            show_msgbox "█ ОШИБКА █" "[✗] Пароли не совпадают!\n\n[!] Повторите ввод пароля."
             continue
         fi
         
@@ -189,27 +252,27 @@ fi
 
 # Информация об SSH-ключах
 if [[ "$USE_SSH_KEY" == true ]]; then
-    show_msgbox "SSH-ключи" "SSH-ключи будут автоматически сгенерированы.\n\nТип: Ed25519 (наиболее безопасный)\n\nПосле установки вы получите инструкции по сохранению приватного ключа."
+    show_msgbox "█ SSH КРИПТОГРАФИЯ █" "[+] SSH-ключи будут автоматически сгенерированы\n\n[>] Тип шифрования: Ed25519 (256-bit)\n[>] Уровень защиты: Военный стандарт\n\n[!] После установки получите инструкции по экспорту приватного ключа."
     SSH_KEY_PATH="/root/.ssh/${USERNAME}_key"
 fi
 
 #==============================================================================
 # SSH порт
 #==============================================================================
-SSH_PORT_CHOICE=$(show_menu "Настройка SSH порта" "Выберите порт для SSH:" \
-    "1" "Стандартный порт 22" \
-    "2" "Пользовательский порт (повышенная безопасность)")
+SSH_PORT_CHOICE=$(show_menu "█ КОНФИГУРАЦИЯ SSH █" "[>] Выберите порт для SSH-сервера:\n\n[!] Изменение стандартного порта усложнит автоматизированные атаки" \
+    "1" "► Порт 22 (стандартный)" \
+    "2" "► Пользовательский порт (↑ безопасность)")
 
 if [[ "$SSH_PORT_CHOICE" == "2" ]]; then
     while true; do
-        SSH_PORT=$(show_inputbox "SSH порт" "Введите номер порта (1024-65535):" "22")
+        SSH_PORT=$(show_inputbox "█ CUSTOM SSH PORT █" "[>] Введите номер порта (диапазон: 1024-65535):\n\n[!] Рекомендуемые порты: 2222, 2200, 49152-65535" "2222")
         
         if [[ "$SSH_PORT" =~ ^[0-9]+$ ]] && [ "$SSH_PORT" -ge 1024 ] && [ "$SSH_PORT" -le 65535 ]; then
             break
         elif [[ "$SSH_PORT" == "22" ]]; then
             break
         else
-            show_msgbox "Ошибка" "Неверный порт!\n\nВведите число от 1024 до 65535\nили оставьте 22 для стандартного порта."
+            show_msgbox "█ ОШИБКА █" "[✗] Неверный номер порта!\n\n[!] Допустимый диапазон: 1024-65535\n[!] Либо используйте порт 22 (стандартный)"
         fi
     done
 else
