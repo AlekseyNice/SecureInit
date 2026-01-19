@@ -49,37 +49,34 @@ trap "rm -f $TEMP_FILE" EXIT
 # Функции для работы с dialog
 #==============================================================================
 show_msgbox() {
-    $DIALOG --title "$1" --msgbox "$2" 0 0
+    $DIALOG --title "$1" --msgbox "$2" 0 0 3>&1 1>&2 2>&3
 }
 
 show_yesno() {
-    $DIALOG --title "$1" --yesno "$2" 0 0
+    $DIALOG --title "$1" --yesno "$2" 0 0 3>&1 1>&2 2>&3
+    return $?
 }
 
 show_inputbox() {
-    $DIALOG --title "$1" --inputbox "$2" 0 0 "$3" 2>$TEMP_FILE
-    cat $TEMP_FILE
+    $DIALOG --title "$1" --inputbox "$2" 0 0 "$3" 3>&1 1>&2 2>&3
 }
 
 show_passwordbox() {
-    $DIALOG --title "$1" --passwordbox "$2" 0 0 2>$TEMP_FILE
-    cat $TEMP_FILE
+    $DIALOG --title "$1" --passwordbox "$2" 0 0 3>&1 1>&2 2>&3
 }
 
 show_menu() {
     local title="$1"
     local text="$2"
     shift 2
-    $DIALOG --title "$title" --menu "$text" 0 0 0 "$@" 2>$TEMP_FILE
-    cat $TEMP_FILE
+    $DIALOG --title "$title" --menu "$text" 0 0 0 "$@" 3>&1 1>&2 2>&3
 }
 
 show_checklist() {
     local title="$1"
     local text="$2"
     shift 2
-    $DIALOG --title "$title" --checklist "$text" 0 0 0 "$@" 2>$TEMP_FILE
-    cat $TEMP_FILE
+    $DIALOG --title "$title" --checklist "$text" 0 0 0 "$@" 3>&1 1>&2 2>&3
 }
 
 show_gauge() {
