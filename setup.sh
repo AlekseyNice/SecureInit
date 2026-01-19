@@ -106,42 +106,42 @@ trap "rm -f $TEMP_FILE $DIALOGRC" EXIT
 # Функции для работы с dialog
 #==============================================================================
 show_msgbox() {
-    $DIALOG --title "$1" --msgbox "$2" 0 0 3>&1 1>&2 2>&3
+    $DIALOG $DIALOG_OPTS --title "$1" --msgbox "$2" 0 0 3>&1 1>&2 2>&3
 }
 
 show_yesno() {
-    $DIALOG --title "$1" --yesno "$2" 0 0 3>&1 1>&2 2>&3
+    $DIALOG $DIALOG_OPTS --title "$1" --yesno "$2" 0 0 3>&1 1>&2 2>&3
     return $?
 }
 
 show_inputbox() {
-    $DIALOG --title "$1" --inputbox "$2" 0 0 "$3" 3>&1 1>&2 2>&3
+    $DIALOG $DIALOG_OPTS --title "$1" --inputbox "$2" 0 0 "$3" 3>&1 1>&2 2>&3
 }
 
 show_passwordbox() {
-    $DIALOG --title "$1" --passwordbox "$2" 0 0 3>&1 1>&2 2>&3
+    $DIALOG $DIALOG_OPTS --title "$1" --passwordbox "$2" 0 0 3>&1 1>&2 2>&3
 }
 
 show_menu() {
     local title="$1"
     local text="$2"
     shift 2
-    $DIALOG --title "$title" --menu "$text" 0 0 0 "$@" 3>&1 1>&2 2>&3
+    $DIALOG $DIALOG_OPTS --title "$title" --menu "$text" 0 0 0 "$@" 3>&1 1>&2 2>&3
 }
 
 show_checklist() {
     local title="$1"
     local text="$2"
     shift 2
-    $DIALOG --title "$title" --checklist "$text" 0 0 0 "$@" 3>&1 1>&2 2>&3
+    $DIALOG $DIALOG_OPTS --title "$title" --checklist "$text" 0 0 0 "$@" 3>&1 1>&2 2>&3
 }
 
 show_gauge() {
-    $DIALOG --title "$1" --gauge "$2" 0 0 "$3"
+    $DIALOG $DIALOG_OPTS --title "$1" --gauge "$2" 0 0 "$3"
 }
 
 show_infobox() {
-    $DIALOG --title "$1" --infobox "$2" 0 0
+    $DIALOG $DIALOG_OPTS --title "$1" --infobox "$2" 0 0
     sleep 2
 }
 
